@@ -105,6 +105,19 @@ export default function build(ctx) {
   fletter.rotation.y = -0.5;
   scene.add(fletter);
 
+  // a small paper bird: Joey memory object
+  const joeyBird = new THREE.Group();
+  const birdMat = mat(0xd8c8aa, { roughness: 0.92, emissive: 0x5a4934, emissiveIntensity: 0.06 });
+  joeyBird.add(box(0.22, 0.035, 0.12, birdMat, 0, 0, 0));
+  const wingL = box(0.2, 0.02, 0.08, birdMat, -0.11, 0.02, 0.02);
+  wingL.rotation.z = 0.45;
+  const wingR = box(0.2, 0.02, 0.08, birdMat, 0.11, 0.02, 0.02);
+  wingR.rotation.z = -0.45;
+  joeyBird.add(wingL, wingR);
+  joeyBird.position.set(-0.05, 0.78, -0.45);
+  joeyBird.rotation.y = 0.7;
+  scene.add(joeyBird);
+
   scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
 
   // ---- father ----
@@ -126,14 +139,14 @@ export default function build(ctx) {
   player.setPose(0, 2.4, 8);
 
   // ---- objectives / tasks ----
-  ctx.setObjective('Talk to Father and understand where David\u2019s conflict began.');
+  ctx.setObjective('Examine David’s childhood memories, then talk to Father.');
   const tasks = taskTracker(
-    ['photo', 'whiskey', 'letter', 'father', 'q3', 'q4'],
+    ['photo', 'whiskey', 'letter', 'joey', 'father', 'q3', 'q4'],
     (k, remaining) => {
       const left = [...remaining];
-      if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing quote cards.');
+      if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing evidence cards.');
     },
-    () => ctx.complete('I ran from that house and kept running \u2014 across an ocean, all the way to Paris. One spring night, Jacques took me to Guillaume\u2019s bar.')
+    () => ctx.complete('I ran from that house and kept running — across an ocean, all the way to Paris. One spring night, Jacques took me to Guillaume’s bar.')
   );
 
   const monologue = (lines, key) => () =>
@@ -142,23 +155,31 @@ export default function build(ctx) {
   interactions.add({
     object: photo, prompt: 'Examine the family photo',
     onInteract: monologue([
-      'My mother died when I was five. In the photograph she is already fading \u2014 I knew her face mostly from this frame.',
+      'My mother died when I was five. In the photograph she is already fading — I knew her face mostly from this frame.',
       'After her, the house was my father, his sister Ellen, and everything we never said.',
     ], 'photo'),
   });
   interactions.add({
     object: glassObj, prompt: 'Examine the whiskey glass',
     onInteract: monologue([
-      'My father\u2019s glass. He drank, and laughed loudly, and called me his buddy.',
+      'My father’s glass. He drank, laughed loudly, and tried to be close without ever asking the questions that mattered.',
       'The house was full of unspoken things, and the whiskey kept them quiet.',
     ], 'whiskey'),
   });
   interactions.add({
-    object: fletter, prompt: 'Read Father\u2019s letter',
+    object: fletter, prompt: 'Read Father’s letter',
     onInteract: monologue([
-      '\u201CDear Butch,\u201D he writes to me in Paris, years from this room, \u201Cwhat are you doing over there? Come home.\u201D',
-      'He asks everything except the one question he cannot bear to ask. I never know how to answer.',
+      'A letter from my father in America. He asks what I am doing in Paris and when I will come home.',
+      'He wants answers about money, plans, and my future — but never asks who I am becoming.',
     ], 'letter'),
+  });
+  interactions.add({
+    object: joeyBird, prompt: 'Remember Joey',
+    onInteract: monologue([
+      'Joey belongs to the part of my childhood I tried to erase.',
+      'For one night tenderness felt possible. The next morning I turned it into shame and pushed him away.',
+      'That fear became a pattern: when feeling became real, I ran.',
+    ], 'joey'),
   });
 
   interactions.add({
@@ -167,30 +188,30 @@ export default function build(ctx) {
       const F = { speaker: 'Father', color: PALETTES.father.accent };
       dialogue.start([
         { ...F, text: 'David. We never talk anymore, you and I. Come here, buddy.' },
-        { ...F, text: 'All I want for you is to grow up to be a real man. And when I say a man \u2014 believe me \u2014 I don\u2019t mean a Sunday school teacher.' },
+        { ...F, text: 'All I want is for you to grow into a man who can stand on his own and live the right kind of life.' },
         {
-          ...F, text: 'You know that, don\u2019t you?',
+          ...F, text: 'You understand that, don’t you?',
           choices: [
             {
-              label: '\u201CMaybe I\u2019m not the man you imagine.\u201D',
+              label: '“Maybe I’m not the man you imagine.”',
               lines: [
-                { speaker: 'David', color: DAVID, text: 'Maybe I\u2019m not the man you imagine.' },
-                { ...F, text: 'Don\u2019t talk nonsense. You\u2019re my son, aren\u2019t you? You\u2019ll be fine.' },
+                { speaker: 'David', color: DAVID, text: 'Maybe I’m not the man you imagine.' },
+                { ...F, text: 'Don’t talk nonsense. You’re my son, aren’t you? You’ll be fine.' },
                 { speaker: null, text: 'He looked straight through me. He always did.' },
               ],
             },
             {
-              label: '\u201CSure, Dad. Whatever you say.\u201D',
+              label: '“Sure, Dad. Whatever you say.”',
               lines: [
                 { speaker: 'David', color: DAVID, text: 'Sure, Dad. Whatever you say.' },
-                { ...F, text: 'That\u2019s my boy. We understand each other, you and I.' },
+                { ...F, text: 'That’s my boy. We understand each other, you and I.' },
                 { speaker: null, text: 'We understood nothing. That was our agreement.' },
               ],
             },
             {
               label: '(Say nothing)',
               lines: [
-                { ...F, text: 'Well. You know I\u2019m not one for speeches.' },
+                { ...F, text: 'Well. You know I’m not one for speeches.' },
                 { speaker: null, text: 'The silence was the truest thing between us.' },
               ],
             },
