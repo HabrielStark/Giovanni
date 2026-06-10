@@ -13,19 +13,17 @@
 
 <div id="vignette"></div>
 
-<!-- HUD -->
 <div id="hud" class="hidden">
   <div id="objective">
     <div class="hud-label">Objective</div>
     <div id="objective-text"></div>
   </div>
-  <div id="quote-counter">Quotes: <span id="quote-count">0</span> / 10</div>
+  <div id="quote-counter">Cards: <span id="quote-count">0</span> / 10</div>
 </div>
 <div id="crosshair" class="hidden"></div>
 <div id="prompt" class="hidden"></div>
 <div id="resume-hint" class="hidden">Click to look around</div>
 
-<!-- Dialogue -->
 <div id="dialogue" class="hidden">
   <div id="dialogue-card">
     <div id="dialogue-name"><span id="dialogue-swatch"></span><span id="dialogue-speaker"></span></div>
@@ -35,7 +33,6 @@
   </div>
 </div>
 
-<!-- Quote card overlay -->
 <div id="quote-overlay" class="hidden">
   <div class="quote-card">
     <div class="qc-ornament">&#10045;</div>
@@ -44,20 +41,18 @@
     <div class="qc-meta">
       <div><span class="qc-label">Scene</span><span id="qc-scene"></span></div>
       <div><span class="qc-label">Chapter</span><span id="qc-chapter"></span></div>
-      <div><span class="qc-label">Page</span><span id="qc-page"></span></div>
+      <div><span class="qc-label">Citation</span><span id="qc-page"></span></div>
       <div><span class="qc-label">Meaning</span><span id="qc-meaning"></span></div>
     </div>
     <button id="qc-close">Continue &nbsp;[E]</button>
   </div>
 </div>
 
-<!-- Narration between scenes -->
 <div id="narration" class="hidden">
   <div id="narration-text"></div>
   <div class="narration-hint">Click or [E] to continue</div>
 </div>
 
-<!-- Title screen -->
 <div id="screen-title" class="screen">
   <div class="title-inner">
     <div class="title-lamp"></div>
@@ -75,27 +70,24 @@
   </div>
 </div>
 
-<!-- Pause menu -->
 <div id="screen-pause" class="screen hidden">
   <div class="panel">
     <h2>Paused</h2>
     <button id="btn-resume" class="big">Resume</button>
-    <button id="btn-journal">Quotes Journal</button>
+    <button id="btn-journal">Evidence Journal</button>
     <button id="btn-controls">Controls</button>
     <button id="btn-restart">Restart</button>
   </div>
 </div>
 
-<!-- Journal -->
 <div id="screen-journal" class="screen hidden">
   <div class="panel wide">
-    <h2>Quotes Journal</h2>
+    <h2>Evidence Journal</h2>
     <div id="journal-list"></div>
     <button id="btn-journal-back">Back</button>
   </div>
 </div>
 
-<!-- Controls -->
 <div id="screen-controls" class="screen hidden">
   <div class="panel">
     <h2>Controls</h2>
@@ -110,39 +102,37 @@
   </div>
 </div>
 
-<!-- Final summary -->
 <div id="screen-final" class="screen hidden">
   <div class="panel wide">
     <h2>What the story shows</h2>
     <ul class="final-list">
       <li>David chooses safety over truth.</li>
-      <li>Giovanni is abandoned &mdash; and destroyed.</li>
-      <li>Hella is hurt most by David&rsquo;s dishonesty, and leaves.</li>
+      <li>Giovanni is abandoned and falls into despair.</li>
+      <li>Hella is hurt by David&rsquo;s dishonesty and leaves.</li>
       <li>David is left alone with a guilt that cannot be torn up and thrown away.</li>
     </ul>
-    <p class="final-theme"><b>Theme: Identity &amp; Self-Expression.</b> David&rsquo;s fear of expressing his true identity destroys everyone he loves and leaves him with nothing but guilt. Baldwin&rsquo;s novel asks what it costs &mdash; to ourselves and to the people who love us &mdash; when we hide who we are in order to be accepted.</p>
+    <p class="final-theme"><b>Theme: Identity &amp; Self-Expression.</b> David&rsquo;s fear of expressing his true identity damages his relationships and leaves him with guilt. Baldwin&rsquo;s novel asks what it costs when we hide who we are in order to be accepted.</p>
     <div class="btn-row">
-      <button id="btn-final-quotes">View collected quotes</button>
+      <button id="btn-final-quotes">View collected evidence</button>
       <button id="btn-final-teacher">For the Teacher</button>
       <button id="btn-final-again" class="big">Play again</button>
     </div>
   </div>
 </div>
 
-<!-- For the Teacher -->
 <div id="screen-teacher" class="screen hidden">
   <div class="panel wide teacher">
     <h2>For the Teacher</h2>
-    <p>This short interactive game (5&ndash;10 minutes) retells James Baldwin&rsquo;s <i>Giovanni&rsquo;s Room</i> (1956) in five playable scenes, and was built to meet the project requirements:</p>
+    <p>This short interactive game retells James Baldwin&rsquo;s <i>Giovanni&rsquo;s Room</i> in five playable scenes and was built to meet the project requirements:</p>
     <ul>
-      <li><b>Characters:</b> David (the player), Giovanni, Hella, David&rsquo;s father, Jacques, and Guillaume all appear and speak.</li>
-      <li><b>Major plot events:</b> the frame night in the south of France; David&rsquo;s childhood, the Joey memory and his father&rsquo;s expectations; meeting Giovanni at Guillaume&rsquo;s bar; life in Giovanni&rsquo;s room; Hella&rsquo;s return and David&rsquo;s silence; Guillaume&rsquo;s murder and Giovanni&rsquo;s death sentence; Hella&rsquo;s discovery and departure; David alone with his guilt.</li>
-      <li><b>Central conflict:</b> truth (self-expression) versus social acceptance (safety). In the final scene the player may &ldquo;try&rdquo; honesty &mdash; the game then notes, respectfully, that this is not what David does in the novel, and follows the book.</li>
-      <li><b>Theme:</b> Identity / Self-Expression &mdash; stated on the final summary screen.</li>
-      <li><b>Citations:</b> ten collectible quote cards, two per scene, each labeled as a <b>paraphrase</b> (or a very short, well-known direct line) with accurate Part/Chapter attribution. Because page numbers vary between editions, every card states <i>&ldquo;Page number depends on edition&rdquo;</i> rather than inventing a number. Cards can be reviewed any time in the Quotes Journal (Esc menu).</li>
-      <li><b>Interactivity:</b> first-person movement, examinable objects, and branching dialogue choices that always converge back to the novel&rsquo;s actual plot.</li>
+      <li><b>Characters:</b> David, Giovanni, Hella, David&rsquo;s father, Jacques, and Guillaume all appear and speak.</li>
+      <li><b>Major plot events:</b> the frame night in the south of France; David&rsquo;s childhood, the Joey memory and his father&rsquo;s expectations; meeting Giovanni at Guillaume&rsquo;s bar; life in Giovanni&rsquo;s room; Hella&rsquo;s return and David&rsquo;s silence; Guillaume&rsquo;s death and Giovanni&rsquo;s sentence; Hella&rsquo;s departure; David alone with guilt.</li>
+      <li><b>Central conflict:</b> truth and self-expression versus social acceptance and safety.</li>
+      <li><b>Theme:</b> Identity / Self-Expression.</li>
+      <li><b>Citations:</b> ten collectible evidence cards, two per scene, each labeled as a paraphrase with Part/Chapter attribution. The citation field uses <i>&ldquo;Baldwin, p. ___&rdquo;</i> so the exact page can be filled from the physical class copy before submission.</li>
+      <li><b>Interactivity:</b> first-person movement, examinable objects, evidence cards, and branching dialogue choices that return to the novel&rsquo;s actual plot.</li>
     </ul>
-    <p class="note">Note: for playtime the scenes condense a few events &mdash; for example, Jacques&rsquo; famous advice, spoken the morning after the bar night in the novel (Part One, Chapter Three), is heard inside the bar scene.</p>
+    <p class="note">Note: for playtime the scenes condense a few events. Jacques&rsquo; warning is paraphrased in the bar scene, while the journal card identifies it as Part One, Chapter Three.</p>
     <button id="btn-teacher-back">Back</button>
   </div>
 </div>
