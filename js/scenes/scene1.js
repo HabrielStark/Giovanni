@@ -75,9 +75,9 @@ export default function build(ctx) {
   table.position.set(-2.1, 0, 0.2);
   scene.add(table);
 
-  const letter = box(0.26, 0.012, 0.36, mat(0xe9e2cf, { roughness: 0.9 }), -2.0, 0.785, 0.2);
-  letter.rotation.y = 0.4;
-  scene.add(letter);
+  const notice = box(0.26, 0.012, 0.36, mat(0xe9e2cf, { roughness: 0.9 }), -2.0, 0.785, 0.2);
+  notice.rotation.y = 0.4;
+  scene.add(notice);
 
   // sofa along the right wall
   const sofa = new THREE.Group();
@@ -121,14 +121,14 @@ export default function build(ctx) {
   player.setPose(0, 2.5, 0);
 
   // ---- objectives / tasks ----
-  ctx.setObjective('Explore the house and begin David\u2019s memory.');
+  ctx.setObjective('Explore the house and begin David’s memory.');
   const tasks = taskTracker(
-    ['mirror', 'suitcase', 'letter', 'window', 'q1', 'q2'],
+    ['mirror', 'suitcase', 'notice', 'window', 'q1', 'q2'],
     (k, remaining) => {
       const left = [...remaining];
-      if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing quote cards.');
+      if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing evidence cards.');
     },
-    () => ctx.complete('To understand this night, I must go back to the beginning \u2014 to my father\u2019s house, years ago, in America.')
+    () => ctx.complete('To understand this night, I must go back to the beginning — to my father’s house, years ago, in America.')
   );
 
   const monologue = (lines, key) => () =>
@@ -137,23 +137,23 @@ export default function build(ctx) {
   interactions.add({
     object: mirror, prompt: 'Examine the mirror',
     onInteract: monologue([
-      'My reflection in the dark glass. Tall, fair \u2014 people say I look like a man who has nothing to hide.',
+      'My reflection in the dark glass. Tall, fair — people say I look like a man who has nothing to hide.',
       'They are wrong.',
     ], 'mirror'),
   });
   interactions.add({
-    object: suitcase, prompt: 'Examine the suitcase',
+    object: suitcase, prompt: 'Examine Hella’s suitcase',
     onInteract: monologue([
-      'One of Hella\u2019s cases, left behind. She has already sailed for America.',
-      'The house feels enormous now, and empty. I did that.',
+      'One of Hella’s cases, left behind. She has already sailed for America.',
+      'The empty suitcase makes the room feel final: Hella is gone, and I am alone with what I refused to say.',
     ], 'suitcase'),
   });
   interactions.add({
-    object: letter, prompt: 'Read the letter',
+    object: notice, prompt: 'Read the execution notice',
     onInteract: monologue([
-      'The letter again. Giovanni\u2019s appeal was refused. Tomorrow morning, at dawn, Giovanni will die on the guillotine.',
-      'I have read it so many times that the words have stopped looking like words.',
-    ], 'letter'),
+      'The official notice is clear: Giovanni’s appeal was refused.',
+      'At dawn in Paris, Giovanni will be executed. The paper says it calmly. I cannot read it calmly.',
+    ], 'notice'),
   });
   interactions.add({
     object: win, prompt: 'Look out the window',
