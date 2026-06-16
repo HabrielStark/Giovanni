@@ -80,12 +80,18 @@ function showViewHint(text) {
 }
 
 function updateAvatarAndCamera() {
+  const eye = camera.position;
+  if (viewMode === VIEW.FP) {
+    renderCamera.position.copy(eye);
+    renderCamera.quaternion.copy(camera.quaternion);
+    if (avatar) avatar.object.visible = false;
+    return;
+  }
   if (!avatar) return;
   // keep the avatar parented to the live scene
   if (sceneManager.scene && avatar.object.parent !== sceneManager.scene) {
     sceneManager.scene.add(avatar.object);
   }
-  const eye = camera.position;
   camera.getWorldDirection(_dir);
   // Horizontal facing must stay stable even when looking straight up/down,
   // otherwise the rig snapped 180 degrees at the poles (the "sudden jerk" bug).
@@ -99,10 +105,7 @@ function updateAvatarAndCamera() {
   avatar.object.rotation.y = Math.atan2(flat.x, flat.z) + AVATAR_FACING;
   avatar.object.visible = viewMode !== VIEW.FP;
 
-  if (viewMode === VIEW.FP) {
-    renderCamera.position.copy(eye);
-    renderCamera.quaternion.copy(camera.quaternion);
-  } else if (viewMode === VIEW.TP_BACK) {
+  if (viewMode === VIEW.TP_BACK) {
     renderCamera.position.copy(eye).addScaledVector(flat, -2.6);
     renderCamera.position.y = eye.y + 0.55;
     _look.copy(eye).addScaledVector(flat, 2.0); _look.y = eye.y - 0.1;
