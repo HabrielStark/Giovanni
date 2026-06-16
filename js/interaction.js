@@ -1,7 +1,7 @@
 // Center-screen raycast interaction: prompt + emissive highlight + E to trigger.
 import * as THREE from 'three';
 
-const REACH = 3.0;
+const REACH = 4.2;
 
 export class InteractionSystem {
   constructor(camera, promptEl) {
@@ -15,6 +15,10 @@ export class InteractionSystem {
     this.ray = new THREE.Raycaster();
     this.ray.far = REACH;
     this.nextScan = 0;
+    this.viewDir = new THREE.Vector3();
+    this.toItem = new THREE.Vector3();
+    this.center = new THREE.Vector3();
+    this.box = new THREE.Box3();
   }
 
   // item: { object, prompt, onInteract }
@@ -25,6 +29,26 @@ export class InteractionSystem {
     });
     const proxies = [];
     item.object.traverse((o) => { if (o.userData.isProxy) proxies.push(o); });
+    if (!proxies.length) {
+      const box = new THREE.Box3().setFromObject(item.object);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      if (Number.isFinite(size.x) && size.lengthSq() > 0) {
+        const proxy = new THREE.Mesh(
+          new THREE.BoxGeometry(
+            Math.max(size.x, 0.7),
+            Math.max(size.y, 0.7),
+            Math.max(size.z, 0.7)
+          ),
+          new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })
+        );
+        item.object.worldToLocal(center);
+        proxy.position.copy(center);
+        proxy.userData.isProxy = true;
+        item.object.add(proxy);
+        proxies.push(proxy);
+      }
+    }
     item.hitObjects = proxies.length ? proxies : [item.object];
     this.items.push(item);
     for (const object of item.hitObjects) {
@@ -56,14 +80,16 @@ export class InteractionSystem {
     const now = performance.now();
     if (now < this.nextScan) return;
     this.nextScan = now + 50;
-    this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
-    const hits = this.ray.intersectObjects(this.targetObjects, true);
-    let found = null;
-    if (hits.length) {
-      let o = hits[0].object;
-      while (o && !found) {
-        found = this.objectToItem.get(o) || null;
-        o = o.parent;
+    let found = this._findInViewCone();
+    if (!found) {
+      this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
+      const hits = this.ray.intersectObjects(this.targetObjects, true);
+      if (hits.length) {
+        let o = hits[0].object;
+        while (o && !found) {
+          found = this.objectToItem.get(o) || null;
+          o = o.parent;
+        }
       }
     }
     this._setCurrent(found);
@@ -84,6 +110,28 @@ export class InteractionSystem {
     } else {
       this.promptEl.classList.add('hidden');
     }
+  }
+
+  _findInViewCone() {
+    this.camera.getWorldDirection(this.viewDir);
+    let best = null;
+    let bestScore = -Infinity;
+    for (const item of this.items) {
+      this.box.setFromObject(item.object);
+      if (this.box.isEmpty()) continue;
+      this.box.getCenter(this.center);
+      this.toItem.copy(this.center).sub(this.camera.position);
+      const dist = this.toItem.length();
+      if (dist > REACH || dist < 0.05) continue;
+      const dot = this.toItem.normalize().dot(this.viewDir);
+      if (dot < 0.82) continue;
+      const score = dot - dist * 0.035;
+      if (score > bestScore) {
+        best = item;
+        bestScore = score;
+      }
+    }
+    return best;
   }
 
   _highlight(obj, on) {

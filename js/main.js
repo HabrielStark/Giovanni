@@ -142,7 +142,7 @@ const dialogue = new DialogueSystem({
   choices: $('dialogue-choices'), cont: $('dialogue-continue'),
 }, {
   onOpen: () => controls.unlock(),
-  onClose: () => { if (!uiBlocked()) player.tryLock(); },
+  onClose: () => {},
 });
 
 const quotes = new QuoteSystem({
@@ -151,7 +151,7 @@ const quotes = new QuoteSystem({
   meaning: $('qc-meaning'), close: $('qc-close'), count: $('quote-count'),
 }, {
   onOpen: () => controls.unlock(),
-  onClose: () => { if (!uiBlocked()) player.tryLock(); },
+  onClose: () => {},
 });
 
 const hud = { setObjective: (text) => { $('objective-text').textContent = text; } };
@@ -267,7 +267,6 @@ const flow = {
     markVisualRefresh();
     warmNextScene();
     game.transitioning = false;
-    if (!uiBlocked()) player.tryLock();
     await fadeTo(0);
   },
   async endGame(cards, quizData) {
@@ -325,7 +324,6 @@ function openPause() {
 function resume() {
   game.paused = false;
   hideScreens();
-  if (!uiBlocked()) player.tryLock();
 }
 
 $('btn-start').addEventListener('click', async () => {
@@ -336,7 +334,6 @@ $('btn-start').addEventListener('click', async () => {
   sceneManager.load(0);
   markVisualRefresh();
   warmNextScene();
-  if (!uiBlocked()) player.tryLock();
   await fadeTo(0);
 });
 $('btn-title-teacher').addEventListener('click', () => { teacherReturn = 'screen-title'; showScreen('screen-teacher'); });
@@ -367,11 +364,11 @@ addEventListener('keydown', (e) => {
     if (quotes.overlayOpen) quotes.closeOverlay();
     else if (narration.open) narrationAdvance();
     else if (dialogue.open) dialogue.advance();
-    else if (game.state === 'playing' && controls.isLocked && !game.transitioning) interactions.interact();
+    else if (game.state === 'playing' && !game.transitioning) interactions.interact();
   } else if (e.code === 'KeyC') {
-    if (game.state === 'playing' && controls.isLocked) cycleView();
+    if (game.state === 'playing' && !uiBlocked()) cycleView();
   } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-    if (game.state === 'playing' && controls.isLocked) {
+    if (game.state === 'playing' && !uiBlocked()) {
       const sitting = player.toggleSit();
       showViewHint(sitting ? 'Sitting' : 'Standing');
     }
@@ -395,7 +392,9 @@ controls.addEventListener('unlock', () => { /* intentionally no auto-pause */ })
 
 // click empty space to re-engage pointer lock
 renderer.domElement.addEventListener('click', () => {
-  if (game.state === 'playing' && !uiBlocked() && !controls.isLocked) player.tryLock();
+  if (game.state !== 'playing' || uiBlocked()) return;
+  if (interactions.current && !controls.isLocked) interactions.interact();
+  else if (!controls.isLocked) player.tryLock();
 });
 
 // ---------- main loop ----------
@@ -426,13 +425,13 @@ function animate() {
   if (game.state === 'playing' && !game.paused) {
     player.update(dt);
     sceneManager.update(dt);
-    interactions.update(!blocked && controls.isLocked);
+    interactions.update(!blocked);
   }
 
   // player avatar + camera rig
   if (avatar) avatar.update(dt);
   if (game.state === 'playing') {
-    if (avatar) avatar.setMoving(player.speed > 0.4 && controls.isLocked && !blocked);
+    if (avatar) avatar.setMoving(player.speed > 0.4 && !blocked);
     updateAvatarAndCamera();
   } else if (avatar) {
     avatar.object.visible = false;
@@ -446,7 +445,7 @@ function animate() {
 
   $('resume-hint').classList.toggle('hidden', !(game.state === 'playing' && !blocked && !controls.isLocked));
   $('crosshair').classList.toggle('hidden',
-    !(game.state === 'playing' && viewMode === VIEW.FP && controls.isLocked && !blocked));
+    !(game.state === 'playing' && viewMode === VIEW.FP && !blocked));
 
   if (sceneManager.scene) renderer.render(sceneManager.scene, renderCamera);
 }

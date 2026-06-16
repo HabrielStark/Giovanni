@@ -20,10 +20,35 @@ export class Player {
     this.eyeHeight = EYE;
     this.sitting = false;
     this.speed = 0;
+    this.dragging = false;
+    this.pointerId = null;
 
     addEventListener('keydown', (e) => { this.keys[e.code] = true; });
     addEventListener('keyup', (e) => { this.keys[e.code] = false; });
     addEventListener('blur', () => { this.keys = {}; });
+
+    domElement.addEventListener('pointerdown', (e) => {
+      if (!this.enabled || this.controls.isLocked) return;
+      this.dragging = true;
+      this.pointerId = e.pointerId;
+      domElement.setPointerCapture?.(e.pointerId);
+    });
+    domElement.addEventListener('pointerup', (e) => {
+      if (this.pointerId !== e.pointerId) return;
+      this.dragging = false;
+      this.pointerId = null;
+      domElement.releasePointerCapture?.(e.pointerId);
+    });
+    domElement.addEventListener('pointercancel', () => {
+      this.dragging = false;
+      this.pointerId = null;
+    });
+    domElement.addEventListener('pointermove', (e) => {
+      if (!this.enabled || this.controls.isLocked || !this.dragging) return;
+      this.camera.rotation.y -= e.movementX * 0.0022;
+      this.camera.rotation.x -= e.movementY * 0.0022;
+      this.camera.rotation.x = THREE.MathUtils.clamp(this.camera.rotation.x, -Math.PI / 2 + 0.02, Math.PI / 2 - 0.02);
+    });
   }
 
   setArea(bounds, obstacles = []) {
@@ -50,7 +75,7 @@ export class Player {
   update(dt) {
     const k = this.keys;
     let fwd = 0, right = 0;
-    if (this.enabled && this.controls.isLocked) {
+    if (this.enabled) {
       fwd = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
       right = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
     }
