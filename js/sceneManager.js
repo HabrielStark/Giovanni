@@ -55,16 +55,25 @@ export class SceneManager {
     this.scene.traverse((o) => { if (o.userData.keep) kept.push(o); });
     for (const k of kept) this.scene.remove(k);
 
+    const disposeTexture = (tex) => {
+      if (tex && tex.dispose && !tex.userData?.shared) tex.dispose();
+    };
+    const disposeMaterial = (m) => {
+      if (!m) return;
+      for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap']) {
+        disposeTexture(m[key]);
+      }
+      m.dispose();
+    };
+
     this.scene.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
+      if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
       if (o.material) {
         const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const m of mats) {
-          if (m.map) m.map.dispose();
-          m.dispose();
-        }
+        for (const m of mats) disposeMaterial(m);
       }
     });
+    disposeTexture(this.scene.background);
     this.scene = null;
   }
 }

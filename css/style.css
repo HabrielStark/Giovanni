@@ -37,6 +37,16 @@ canvas#game-canvas { position: fixed; inset: 0; display: block; }
   color: var(--gold-soft); padding: 8px 14px; border-radius: 6px; font-size: 13px; letter-spacing: 0.04em;
 }
 
+@media (max-width: 560px) {
+  #objective {
+    top: 18px; left: 16px; right: 16px; max-width: none;
+    padding-right: 104px;
+  }
+  #quote-counter {
+    top: 18px; right: 16px; padding: 7px 11px; font-size: 12px;
+  }
+}
+
 #crosshair {
   position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
   border-radius: 50%; background: rgba(255,255,255,0.75); z-index: 10; pointer-events: none;

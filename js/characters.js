@@ -31,6 +31,9 @@ const MODELS = {
 const _gltf = new GLTFLoader();
 const _fbx = new FBXLoader();
 const _cache = new Map(); // url -> Promise<{ root, animations }>
+const LOW_POWER =
+  navigator.hardwareConcurrency <= 4 ||
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 function loadSource(cfg) {
   if (_cache.has(cfg.url)) return _cache.get(cfg.url);
@@ -45,11 +48,25 @@ function loadSource(cfg) {
   return p;
 }
 
-// Warm the cache for every figure up front (called from the title screen) so a
-// scene swap shows its characters instantly instead of streaming them in.
+function scheduleIdle(fn) {
+  if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 1200 });
+  else setTimeout(fn, 120);
+}
+
+// Warm the cache without parsing every rig at the same instant. Starting all
+// six FBX/glTF loads together made the title screen and first interaction hitch
+// badly on slower machines.
 export function preloadCharacters() {
-  return Promise.all(Object.values(MODELS).map((cfg) =>
-    loadSource(cfg).catch((err) => console.warn('Preload failed:', cfg.url, err))));
+  const queue = ['david', 'giovanni', 'hella', 'father', 'jacques', 'guillaume']
+    .map((key) => MODELS[key]);
+  const pump = () => {
+    const cfg = queue.shift();
+    if (!cfg) return;
+    loadSource(cfg)
+      .catch((err) => console.warn('Preload failed:', cfg.url, err))
+      .finally(() => scheduleIdle(pump));
+  };
+  scheduleIdle(pump);
 }
 
 // Soften imported materials so a figure reads as a person under any light.
@@ -59,6 +76,12 @@ export function preloadCharacters() {
 function humanizeMaterials(model) {
   model.traverse((o) => {
     if (!o.isMesh && !o.isSkinnedMesh) return;
+    if (o.geometry) o.geometry.userData.shared = true;
+    if (o.material) {
+      o.material = Array.isArray(o.material)
+        ? o.material.map((m) => (m ? m.clone() : m))
+        : o.material.clone();
+    }
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of mats) {
       if (!m) continue;
@@ -72,6 +95,9 @@ function humanizeMaterials(model) {
       // legacy Phong/Lambert specular
       if (m.specular && m.specular.setScalar) m.specular.setScalar(0.04);
       if ('shininess' in m) m.shininess = Math.min(m.shininess ?? 30, 12);
+      for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap']) {
+        if (m[key]) m[key].userData.shared = true;
+      }
       m.needsUpdate = true;
     }
   });
@@ -184,6 +210,8 @@ export function createCharacter(name, paletteKey) {
   let mixer = null;
   let model = null;
   let animated = false;
+  let animAcc = 0;
+  const animStep = LOW_POWER ? 1 / 24 : 1 / 40;
 
   if (cfg) {
     loadSource(cfg).then((src) => {
@@ -192,7 +220,7 @@ export function createCharacter(name, paletteKey) {
       humanizeMaterials(model);
       model.traverse((o) => {
         if (o.isMesh || o.isSkinnedMesh) {
-          o.castShadow = true;
+          o.castShadow = false;
           o.receiveShadow = true;
           o.frustumCulled = false; // skinned bounds can be wrong otherwise
         }
@@ -213,7 +241,11 @@ export function createCharacter(name, paletteKey) {
   }
 
   root.userData.update = (dt, t) => {
-    if (mixer) mixer.update(dt);
+    animAcc += dt;
+    if (mixer && animAcc >= animStep) {
+      mixer.update(animAcc);
+      animAcc = 0;
+    }
     if (!model) return;
     const tt = t + phase;
     if (animated) {
@@ -248,7 +280,11 @@ export function createAvatar() {
     normalize(model, cfg.height);
     humanizeMaterials(model);
     model.traverse((o) => {
-      if (o.isMesh || o.isSkinnedMesh) { o.castShadow = true; o.frustumCulled = false; }
+      if (o.isMesh || o.isSkinnedMesh) {
+        o.castShadow = false;
+        o.receiveShadow = true;
+        o.frustumCulled = false;
+      }
     });
     holder = new THREE.Group();
     holder.add(model);

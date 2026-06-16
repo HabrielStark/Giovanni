@@ -10,11 +10,23 @@ import { createAvatar, preloadCharacters } from './characters.js';
 const $ = (id) => document.getElementById(id);
 
 // ---------- renderer / camera ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const LOW_POWER =
+  navigator.hardwareConcurrency <= 4 ||
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const DPR_LIMIT = LOW_POWER ? 1 : 1.5;
+let targetPixelRatio = Math.min(devicePixelRatio || 1, DPR_LIMIT);
+let perfFrames = 0;
+let perfTime = 0;
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: !LOW_POWER,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(targetPixelRatio);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = LOW_POWER ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
 renderer.domElement.id = 'game-canvas';
@@ -36,6 +48,7 @@ addEventListener('resize', () => {
   renderCamera.aspect = innerWidth / innerHeight;
   renderCamera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.needsUpdate = true;
 });
 
 // ---------- third-person rig + player avatar (David) ----------
@@ -50,6 +63,7 @@ const _flat = new THREE.Vector3(0, 0, -1); // last stable horizontal facing
 
 function cycleView() {
   viewMode = (viewMode + 1) % 3;
+  renderer.shadowMap.needsUpdate = true;
   showViewHint(VIEW_NAMES[viewMode]);
 }
 
@@ -243,6 +257,7 @@ const flow = {
     await fadeTo(1);
     if (narrationLine) await showNarration([narrationLine]);
     sceneManager.load(sceneManager.index + 1);
+    markVisualRefresh();
     game.transitioning = false;
     if (!uiBlocked()) player.tryLock();
     await fadeTo(0);
@@ -272,6 +287,10 @@ function hideScreens() {
   for (const s of SCREENS) $(s).classList.add('hidden');
 }
 
+function markVisualRefresh() {
+  renderer.shadowMap.needsUpdate = true;
+}
+
 let journalReturn = 'screen-pause';
 let teacherReturn = 'screen-title';
 
@@ -294,6 +313,7 @@ $('btn-start').addEventListener('click', async () => {
   $('hud').classList.remove('hidden');
   $('crosshair').classList.remove('hidden');
   sceneManager.load(0);
+  markVisualRefresh();
   if (!uiBlocked()) player.tryLock();
   await fadeTo(0);
 });
@@ -361,6 +381,23 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+  perfFrames++;
+  perfTime += dt;
+  if (perfTime >= 2) {
+    const fps = perfFrames / perfTime;
+    perfFrames = 0;
+    perfTime = 0;
+    const minRatio = LOW_POWER ? 0.75 : 0.9;
+    if (fps < 42 && targetPixelRatio > minRatio) {
+      targetPixelRatio = Math.max(minRatio, targetPixelRatio - 0.15);
+      renderer.setPixelRatio(targetPixelRatio);
+      renderer.setSize(innerWidth, innerHeight, false);
+    } else if (fps > 56 && targetPixelRatio < DPR_LIMIT) {
+      targetPixelRatio = Math.min(DPR_LIMIT, targetPixelRatio + 0.1);
+      renderer.setPixelRatio(targetPixelRatio);
+      renderer.setSize(innerWidth, innerHeight, false);
+    }
+  }
   const blocked = uiBlocked();
   player.enabled = !blocked;
 

@@ -8,9 +8,13 @@ export class InteractionSystem {
     this.camera = camera;
     this.promptEl = promptEl;
     this.items = [];
+    this.targets = [];
+    this.targetObjects = [];
+    this.objectToItem = new WeakMap();
     this.current = null;
     this.ray = new THREE.Raycaster();
     this.ray.far = REACH;
+    this.nextScan = 0;
   }
 
   // item: { object, prompt, onInteract }
@@ -19,30 +23,46 @@ export class InteractionSystem {
     item.object.traverse((o) => {
       if (o.isMesh && o.material && o.material.emissive) o.material = o.material.clone();
     });
+    const proxies = [];
+    item.object.traverse((o) => { if (o.userData.isProxy) proxies.push(o); });
+    item.hitObjects = proxies.length ? proxies : [item.object];
     this.items.push(item);
+    for (const object of item.hitObjects) {
+      this.targets.push({ object, item });
+      this.targetObjects.push(object);
+      this.objectToItem.set(object, item);
+    }
     return item;
   }
 
   remove(item) {
     const i = this.items.indexOf(item);
     if (i >= 0) this.items.splice(i, 1);
+    this.targets = this.targets.filter((target) => target.item !== item);
+    this.targetObjects = this.targets.map((target) => target.object);
     if (this.current === item) this._setCurrent(null);
   }
 
   clear() {
     this._setCurrent(null);
     this.items = [];
+    this.targets = [];
+    this.targetObjects = [];
+    this.objectToItem = new WeakMap();
   }
 
   update(active) {
     if (!active) { this._setCurrent(null); return; }
+    const now = performance.now();
+    if (now < this.nextScan) return;
+    this.nextScan = now + 50;
     this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
-    const hits = this.ray.intersectObjects(this.items.map((i) => i.object), true);
+    const hits = this.ray.intersectObjects(this.targetObjects, true);
     let found = null;
     if (hits.length) {
       let o = hits[0].object;
       while (o && !found) {
-        found = this.items.find((i) => i.object === o) || null;
+        found = this.objectToItem.get(o) || null;
         o = o.parent;
       }
     }

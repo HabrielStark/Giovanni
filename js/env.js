@@ -1,6 +1,10 @@
 // Shared environment helpers: materials, primitives, rooms, canvas textures.
 import * as THREE from 'three';
 
+const LOW_POWER =
+  navigator.hardwareConcurrency <= 4 ||
+  /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 export function mat(color, opts = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.88, metalness: 0.04, ...opts });
 }
@@ -31,7 +35,11 @@ export function canvasTex(w, h, draw) {
 const _texCache = new Map();
 function cached(key, make) {
   let t = _texCache.get(key);
-  if (!t) { t = make(); _texCache.set(key, t); }
+  if (!t) {
+    t = make();
+    t.userData.shared = true;
+    _texCache.set(key, t);
+  }
   return t;
 }
 
@@ -216,8 +224,9 @@ export function taskTracker(keys, onTask, onDone) {
 
 // Drifting dust motes inside a volume.
 export function makeDust(count, vol, color = 0xffe2b0) {
-  const pos = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
+  const particleCount = LOW_POWER ? Math.max(24, Math.floor(count * 0.55)) : count;
+  const pos = new Float32Array(particleCount * 3);
+  for (let i = 0; i < particleCount; i++) {
     pos[i * 3] = (Math.random() - 0.5) * vol.w;
     pos[i * 3 + 1] = Math.random() * vol.h;
     pos[i * 3 + 2] = (Math.random() - 0.5) * vol.d;
@@ -227,9 +236,14 @@ export function makeDust(count, vol, color = 0xffe2b0) {
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({
     color, size: 0.018, transparent: true, opacity: 0.45, depthWrite: false,
   }));
+  let acc = 0;
   pts.userData.update = (dt, t) => {
+    acc += dt;
+    if (acc < 1 / 20) return;
+    dt = acc;
+    acc = 0;
     const a = geo.attributes.position;
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < particleCount; i++) {
       a.array[i * 3 + 1] -= dt * 0.05;
       a.array[i * 3] += Math.sin(t * 0.6 + i) * dt * 0.01;
       if (a.array[i * 3 + 1] < 0) a.array[i * 3 + 1] = vol.h;
