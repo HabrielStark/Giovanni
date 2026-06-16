@@ -5,6 +5,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 const SPEED = 2.5;
 const RADIUS = 0.35;
 const EYE = 1.6;
+const SIT_EYE = 0.95;
 
 export class Player {
   constructor(camera, domElement) {
@@ -16,6 +17,9 @@ export class Player {
     this.bounds = { minX: -5, maxX: 5, minZ: -5, maxZ: 5 };
     this.obstacles = [];
     this.bobTime = 0;
+    this.eyeHeight = EYE;
+    this.sitting = false;
+    this.speed = 0;
 
     addEventListener('keydown', (e) => { this.keys[e.code] = true; });
     addEventListener('keyup', (e) => { this.keys[e.code] = false; });
@@ -27,8 +31,14 @@ export class Player {
     this.obstacles = obstacles;
   }
 
+  toggleSit() {
+    this.sitting = !this.sitting;
+    this.eyeHeight = this.sitting ? SIT_EYE : EYE;
+    return this.sitting;
+  }
+
   setPose(x, z, yawDeg = 0) {
-    this.camera.position.set(x, EYE, z);
+    this.camera.position.set(x, this.eyeHeight, z);
     this.camera.rotation.set(0, THREE.MathUtils.degToRad(yawDeg), 0, 'YXZ');
     this.vel.set(0, 0);
   }
@@ -73,11 +83,12 @@ export class Player {
 
     // subtle head bob
     const speed = this.vel.length();
+    this.speed = speed;
     if (speed > 0.4) {
       this.bobTime += dt * (4 + speed * 2.2);
-      p.y = EYE + Math.sin(this.bobTime) * 0.026;
+      p.y = this.eyeHeight + Math.sin(this.bobTime) * 0.026;
     } else {
-      p.y += (EYE - p.y) * Math.min(1, dt * 6);
+      p.y += (this.eyeHeight - p.y) * Math.min(1, dt * 6);
     }
   }
 }

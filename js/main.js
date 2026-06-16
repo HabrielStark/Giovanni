@@ -3,8 +3,9 @@ import * as THREE from 'three';
 import { Player } from './player.js';
 import { InteractionSystem } from './interaction.js';
 import { DialogueSystem } from './dialogue.js';
-import { QuoteSystem } from './quotes.js';
+import { QuoteSystem, QUOTE_TOTAL } from './quotes.js';
 import { SceneManager, SCENE_COUNT } from './sceneManager.js';
+import { createAvatar, preloadCharacters } from './characters.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -15,17 +16,86 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 0.95;
 renderer.domElement.id = 'game-canvas';
 document.body.prepend(renderer.domElement);
 
+// Start downloading every character model immediately, while the player is
+// still on the title screen, so scenes pop in without a wait.
+preloadCharacters();
+
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 220);
+
+// Separate camera used for actual rendering. In first person it mirrors the
+// eye camera; in third-person views it is offset around the player.
+const renderCamera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 220);
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  renderCamera.aspect = innerWidth / innerHeight;
+  renderCamera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+
+// ---------- third-person rig + player avatar (David) ----------
+const VIEW = { FP: 0, TP_BACK: 1, TP_FRONT: 2 };
+const VIEW_NAMES = ['First person', 'Third person — behind', 'Third person — front'];
+let viewMode = VIEW.FP;
+const avatar = createAvatar();
+const AVATAR_FACING = Math.PI; // David.fbx faces -Z by default; flip to face look dir
+const _dir = new THREE.Vector3();
+const _look = new THREE.Vector3();
+const _flat = new THREE.Vector3(0, 0, -1); // last stable horizontal facing
+
+function cycleView() {
+  viewMode = (viewMode + 1) % 3;
+  showViewHint(VIEW_NAMES[viewMode]);
+}
+
+let viewHintTimer = 0;
+function showViewHint(text) {
+  const el = $('view-hint');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('hidden');
+  viewHintTimer = performance.now() + 1400;
+}
+
+function updateAvatarAndCamera() {
+  // keep the avatar parented to the live scene
+  if (sceneManager.scene && avatar.object.parent !== sceneManager.scene) {
+    sceneManager.scene.add(avatar.object);
+  }
+  const eye = camera.position;
+  camera.getWorldDirection(_dir);
+  // Horizontal facing must stay stable even when looking straight up/down,
+  // otherwise the rig snapped 180 degrees at the poles (the "sudden jerk" bug).
+  if (Math.abs(_dir.x) > 1e-4 || Math.abs(_dir.z) > 1e-4) {
+    _flat.set(_dir.x, 0, _dir.z).normalize();
+  }
+  const flat = _flat;
+
+  // place + orient David at the player's feet
+  avatar.object.position.set(eye.x, 0, eye.z);
+  avatar.object.rotation.y = Math.atan2(flat.x, flat.z) + AVATAR_FACING;
+  avatar.object.visible = viewMode !== VIEW.FP;
+
+  if (viewMode === VIEW.FP) {
+    renderCamera.position.copy(eye);
+    renderCamera.quaternion.copy(camera.quaternion);
+  } else if (viewMode === VIEW.TP_BACK) {
+    renderCamera.position.copy(eye).addScaledVector(flat, -2.6);
+    renderCamera.position.y = eye.y + 0.55;
+    _look.copy(eye).addScaledVector(flat, 2.0); _look.y = eye.y - 0.1;
+    renderCamera.lookAt(_look);
+  } else { // TP_FRONT
+    renderCamera.position.copy(eye).addScaledVector(flat, 2.4);
+    renderCamera.position.y = eye.y + 0.25;
+    _look.copy(eye); _look.y = eye.y - 0.1;
+    renderCamera.lookAt(_look);
+  }
+}
 
 // ---------- game state ----------
 const game = {
@@ -37,7 +107,7 @@ const game = {
 
 function uiBlocked() {
   return game.state !== 'playing' || game.paused || game.transitioning ||
-    dialogue.open || quotes.overlayOpen || narration.open;
+    dialogue.open || quotes.overlayOpen || narration.open || quiz.open;
 }
 
 // ---------- systems ----------
@@ -64,6 +134,9 @@ const quotes = new QuoteSystem({
 });
 
 const hud = { setObjective: (text) => { $('objective-text').textContent = text; } };
+
+// keep the "/ N" card total in the HUD in sync with the actual quote set
+{ const qt = $('quote-total'); if (qt) qt.textContent = String(QUOTE_TOTAL); }
 
 // ---------- narration overlay ----------
 const narration = { open: false, cards: [], i: 0, resolve: null };
@@ -101,6 +174,58 @@ function narrationAdvance() {
 }
 $('narration').addEventListener('click', narrationAdvance);
 
+// ---------- quiz checkpoint ----------
+const quiz = { open: false, correct: -1, resolve: null, answered: false };
+
+function showQuiz(data) {
+  return new Promise((resolve) => {
+    quiz.open = true;
+    quiz.correct = data.correct;
+    quiz.resolve = resolve;
+    quiz.answered = false;
+    $('quiz-q').textContent = data.q;
+    $('quiz-feedback').classList.add('hidden');
+    $('quiz-feedback').textContent = '';
+    const opts = $('quiz-opts');
+    opts.innerHTML = '';
+    data.options.forEach((label, i) => {
+      const b = document.createElement('button');
+      b.className = 'quiz-opt';
+      b.textContent = label;
+      b.addEventListener('click', () => answerQuiz(i, b, data));
+      opts.appendChild(b);
+    });
+    controls.unlock();
+    $('quiz').classList.remove('hidden');
+  });
+}
+
+function answerQuiz(i, btn, data) {
+  if (quiz.answered) return;
+  const fb = $('quiz-feedback');
+  if (i === quiz.correct) {
+    quiz.answered = true;
+    btn.classList.add('correct');
+    fb.textContent = data.why || 'Correct.';
+    fb.className = 'good';
+    [...$('quiz-opts').children].forEach((b) => { b.disabled = true; });
+    setTimeout(() => {
+      quiz.open = false;
+      $('quiz').classList.add('hidden');
+      const r = quiz.resolve; quiz.resolve = null;
+      if (r) r();
+    }, 1200);
+  } else {
+    btn.classList.add('wrong');
+    btn.disabled = true;
+    fb.textContent = data.hint || 'Not quite — think back on what you saw and heard in this room.';
+    fb.className = 'bad';
+    fb.classList.remove('hidden');
+    const card = document.querySelector('.quiz-card');
+    card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+  }
+}
+
 // ---------- fade ----------
 function fadeTo(opacity) {
   const el = $('fade');
@@ -111,9 +236,10 @@ function fadeTo(opacity) {
 
 // ---------- scene flow ----------
 const flow = {
-  async nextScene(narrationLine) {
+  async nextScene(narrationLine, quizData) {
     game.transitioning = true;
     interactions.update(false);
+    if (quizData) await showQuiz(quizData);
     await fadeTo(1);
     if (narrationLine) await showNarration([narrationLine]);
     sceneManager.load(sceneManager.index + 1);
@@ -121,9 +247,10 @@ const flow = {
     if (!uiBlocked()) player.tryLock();
     await fadeTo(0);
   },
-  async endGame(cards) {
+  async endGame(cards, quizData) {
     game.transitioning = true;
     interactions.update(false);
+    if (quizData) await showQuiz(quizData);
     await fadeTo(1);
     await showNarration(cards);
     game.state = 'final';
@@ -194,14 +321,22 @@ $('btn-teacher-back').addEventListener('click', () => showScreen(teacherReturn))
 addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (e.code === 'KeyE') {
-    if (game.paused) return;
+    if (game.paused || quiz.open) return;
     if (quotes.overlayOpen) quotes.closeOverlay();
     else if (narration.open) narrationAdvance();
     else if (dialogue.open) dialogue.advance();
     else if (game.state === 'playing' && controls.isLocked && !game.transitioning) interactions.interact();
+  } else if (e.code === 'KeyC') {
+    if (game.state === 'playing' && controls.isLocked) cycleView();
+  } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    if (game.state === 'playing' && controls.isLocked) {
+      const sitting = player.toggleSit();
+      showViewHint(sitting ? 'Sitting' : 'Standing');
+    }
   } else if (e.code === 'Escape') {
     if (game.state !== 'playing') return;
-    // pointer-lock Esc is handled by the unlock event; this catches Esc while a UI is open
+    // Esc while the cursor is free opens the menu; while locked the browser
+    // eats Esc to release the pointer (which only shows the resume hint).
     if (game.paused) {
       if (performance.now() - game.pausedAt > 400) resume();
     } else if (!controls.isLocked) {
@@ -210,9 +345,11 @@ addEventListener('keydown', (e) => {
   }
 });
 
-controls.addEventListener('unlock', () => {
-  if (game.state === 'playing' && !uiBlocked()) openPause();
-});
+// Losing pointer lock (Esc, clicking away, tab switch, or Safari dropping it on
+// its own) must NOT force the pause menu open — that caused the menu to pop up
+// constantly. Instead the "click to resume" hint shows (see the main loop), and
+// the menu is opened deliberately with Esc while the cursor is already free.
+controls.addEventListener('unlock', () => { /* intentionally no auto-pause */ });
 
 // click empty space to re-engage pointer lock
 renderer.domElement.addEventListener('click', () => {
@@ -233,9 +370,26 @@ function animate() {
     interactions.update(!blocked && controls.isLocked);
   }
 
-  $('resume-hint').classList.toggle('hidden', !(game.state === 'playing' && !blocked && !controls.isLocked));
+  // player avatar + camera rig
+  avatar.update(dt);
+  if (game.state === 'playing') {
+    avatar.setMoving(player.speed > 0.4 && controls.isLocked && !blocked);
+    updateAvatarAndCamera();
+  } else {
+    avatar.object.visible = false;
+  }
 
-  if (sceneManager.scene) renderer.render(sceneManager.scene, camera);
+  // view-mode hint auto-hide
+  if (viewHintTimer && performance.now() > viewHintTimer) {
+    viewHintTimer = 0;
+    const vh = $('view-hint'); if (vh) vh.classList.add('hidden');
+  }
+
+  $('resume-hint').classList.toggle('hidden', !(game.state === 'playing' && !blocked && !controls.isLocked));
+  $('crosshair').classList.toggle('hidden',
+    !(game.state === 'playing' && viewMode === VIEW.FP && controls.isLocked && !blocked));
+
+  if (sceneManager.scene) renderer.render(sceneManager.scene, renderCamera);
 }
 animate();
 

@@ -19,11 +19,11 @@ export default function build(ctx) {
     ceilMat: mat(0x5e4d3a),
   });
 
-  scene.add(new THREE.AmbientLight(0xa08862, 3.2));
-  const fill = new THREE.PointLight(0xd9b988, 9, 14, 1.6);
+  scene.add(new THREE.AmbientLight(0xa08862, 3.4));
+  const fill = new THREE.PointLight(0xd9b988, 6, 14, 1.6);
   fill.position.set(0, 2.5, 0.5);
   scene.add(fill);
-  const sun = new THREE.DirectionalLight(0xd9b380, 2.8);
+  const sun = new THREE.DirectionalLight(0xd9b380, 2.0);
   sun.position.set(3, 4, 2.5);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -126,6 +126,13 @@ export default function build(ctx) {
   father.rotation.y = 0.25;
   ctx.addAnimated(father);
 
+  // soft warm key light gently lifting Father's face out of the shadows so the
+  // low-poly features read as a face rather than a skull (kept low so it
+  // doesn't blow out and "x-ray" the model)
+  const faceKey = new THREE.PointLight(0xffe2b4, 2.6, 3.6, 2.2);
+  faceKey.position.set(-0.7, 1.7, -0.7);
+  scene.add(faceKey);
+
   // ---- player ----
   player.setArea(
     { minX: -W / 2 + 0.2, maxX: W / 2 - 0.2, minZ: -D / 2 + 0.2, maxZ: D / 2 - 0.2 },
@@ -141,12 +148,18 @@ export default function build(ctx) {
   // ---- objectives / tasks ----
   ctx.setObjective('Examine David’s childhood memories, then talk to Father.');
   const tasks = taskTracker(
-    ['photo', 'whiskey', 'letter', 'joey', 'father', 'q3', 'q4'],
+    ['photo', 'whiskey', 'letter', 'joey', 'father', 'q2', 'q3'],
     (k, remaining) => {
       const left = [...remaining];
       if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing evidence cards.');
     },
-    () => ctx.complete('I ran from that house and kept running — across an ocean, all the way to Paris. One spring night, Jacques took me to Guillaume’s bar.')
+    () => ctx.complete('I ran from that house and kept running — across an ocean, all the way to Paris. One spring night, Jacques took me to Guillaume’s bar.', {
+      q: 'When David’s father says he wants David to grow up to be “a man,” what does he really expect?',
+      options: ['That David will discover who he truly is inside', 'That David will perform the role expected of him', 'That David will take over the family business'],
+      correct: 1,
+      why: 'Exactly. Manhood here is a role to perform, not an identity to discover — a pressure David carries across the ocean.',
+      hint: 'Think about how his father looks “straight through” David rather than asking who he is.',
+    })
   );
 
   const monologue = (lines, key) => () =>
@@ -222,6 +235,6 @@ export default function build(ctx) {
     },
   });
 
-  quotes.spawn(ctx, 'q3', new THREE.Vector3(-3.4, 1.35, -1.6), () => tasks.done('q3'));
-  quotes.spawn(ctx, 'q4', new THREE.Vector3(1.3, 1.35, 0.9), () => tasks.done('q4'));
+  quotes.spawn(ctx, 'q2', new THREE.Vector3(-3.4, 1.35, -1.6), () => tasks.done('q2'));
+  quotes.spawn(ctx, 'q3', new THREE.Vector3(1.3, 1.35, 0.9), () => tasks.done('q3'));
 }

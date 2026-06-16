@@ -19,10 +19,10 @@ export default function build(ctx) {
     ceilMat: mat(0x6e5c44),
   });
 
-  scene.add(new THREE.AmbientLight(0x6b5436, 0.85));
+  scene.add(new THREE.AmbientLight(0x6b5436, 1.3));
 
   // the single lamp — the soul of the room
-  const lampLight = new THREE.PointLight(0xffb066, 9, 11, 1.7);
+  const lampLight = new THREE.PointLight(0xffb066, 7, 11, 1.7);
   lampLight.position.set(1.55, 1.18, -1.45);
   lampLight.castShadow = true;
   lampLight.shadow.mapSize.set(1024, 1024);
@@ -133,14 +133,20 @@ export default function build(ctx) {
 
   // ---- objectives / tasks ----
   ctx.setObjective('Look around the room David and Giovanni shared, then talk to Giovanni.');
-  const LOOK = ['bed', 'chair', 'shirt', 'bottle', 'window', 'mirror', 'q7', 'q8'];
+  const LOOK = ['bed', 'chair', 'shirt', 'bottle', 'window', 'mirror', 'q5'];
   const tasks = taskTracker(
     [...LOOK, 'giovanni'],
     (k, remaining) => {
       const left = [...remaining];
       if (left.length === 1 && left[0] === 'giovanni') ctx.setObjective('Talk to Giovanni.');
     },
-    () => ctx.complete('Then a letter came. Hella was sailing back from Spain. I left the room to meet her \u2014 and I did not say when I would return.')
+    () => ctx.complete('Then a letter came. Hella was sailing back from Spain. I left the room to meet her \u2014 and I did not say when I would return.', {
+      q: 'Why did Giovanni paint the room’s windows white?',
+      options: ['To keep the world out and what happens inside hidden', 'To let in softer light for painting', 'Because the glass was broken'],
+      correct: 0,
+      why: 'Right. The whitened windows stand for secrecy and isolation — a love that must hide from the world slowly suffocates.',
+      hint: 'Remember what David said when he examined the window.',
+    })
   );
   const lookDone = () => LOOK.every((k) => !tasks.has(k));
 
@@ -230,6 +236,5 @@ export default function build(ctx) {
     },
   });
 
-  quotes.spawn(ctx, 'q7', new THREE.Vector3(-1.5, 1.4, 0.5), () => tasks.done('q7'));
-  quotes.spawn(ctx, 'q8', new THREE.Vector3(0.55, 1.35, -1.8), () => tasks.done('q8'));
+  quotes.spawn(ctx, 'q5', new THREE.Vector3(-1.5, 1.4, 0.5), () => tasks.done('q5'));
 }

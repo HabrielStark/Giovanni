@@ -23,7 +23,102 @@ export function canvasTex(w, h, draw) {
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
   return t;
+}
+
+// ---- procedural texture library (cached) -----------------------------------
+const _texCache = new Map();
+function cached(key, make) {
+  let t = _texCache.get(key);
+  if (!t) { t = make(); _texCache.set(key, t); }
+  return t;
+}
+
+function hexToRgb(hex) {
+  return { r: (hex >> 16) & 255, g: (hex >> 8) & 255, b: hex & 255 };
+}
+function shade(hex, f) {
+  const { r, g, b } = hexToRgb(hex);
+  const m = (v) => Math.max(0, Math.min(255, Math.round(v + (f > 0 ? (255 - v) * f : v * f))));
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+
+// Soft value-noise grain map, returned as a non-color (linear) texture so it
+// can be used for roughness/bump without tinting the albedo.
+function grainData(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+// Subtle woven-fabric weave with flecks. Tints around `hex`.
+export function fabricTex(hex, scale = 1) {
+  return cached('fab_' + hex + '_' + scale, () => grainData(128, 128, (g, w, h) => {
+    g.fillStyle = shade(hex, 0);
+    // base
+    g.fillStyle = `rgb(${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255})`;
+    g.fillRect(0, 0, w, h);
+    // weave lines
+    g.globalAlpha = 0.06;
+    g.strokeStyle = '#000';
+    for (let x = 0; x < w; x += 3) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+    g.strokeStyle = '#fff';
+    for (let y = 0; y < h; y += 3) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    // random flecks for a hand-loomed feel
+    g.globalAlpha = 1;
+    for (let i = 0; i < 1400; i++) {
+      const a = Math.random() * 0.05;
+      g.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
+    }
+  }));
+}
+
+// Bump-ish roughness map for cloth (cached, scale-independent).
+export function clothBump() {
+  return cached('clothBump', () => grainData(128, 128, (g, w, h) => {
+    g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 4000; i++) {
+      const v = 110 + Math.random() * 60;
+      g.fillStyle = `rgb(${v},${v},${v})`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    }
+  }));
+}
+
+// Fine skin micro-shading map.
+export function skinTex(hex) {
+  return cached('skin_' + hex, () => canvasTex(64, 64, (g, w, h) => {
+    g.fillStyle = `rgb(${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 255})`;
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 500; i++) {
+      g.fillStyle = `rgba(120,70,50,${Math.random() * 0.04})`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    }
+  }));
+}
+
+// A standard material that carries woven texture + cloth micro-bump.
+export function clothMat(hex, opts = {}) {
+  const map = fabricTex(hex, opts.scale || 1);
+  map.repeat.set(opts.repeat || 2, opts.repeat || 2);
+  return new THREE.MeshStandardMaterial({
+    map,
+    roughnessMap: clothBump(),
+    roughness: opts.roughness ?? 0.92,
+    metalness: 0,
+    ...('emissive' in opts ? { emissive: opts.emissive, emissiveIntensity: opts.emissiveIntensity ?? 0.1 } : {}),
+  });
+}
+
+export function skinMat(hex, opts = {}) {
+  return new THREE.MeshStandardMaterial({
+    map: skinTex(hex), roughness: opts.roughness ?? 0.72, metalness: 0, ...opts,
+  });
 }
 
 // Vertical gradient texture from color stops [[offset, css], ...]

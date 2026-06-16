@@ -1,6 +1,6 @@
 # Giovanni's Room — An Interactive Journey
 
-A short, first-person 3D exploration game based on James Baldwin's novel *Giovanni's Room* (1956). You play as David and walk through five scenes of his memory — the house in the south of France, his father's living room, Guillaume's bar, Giovanni's room, and Hella's return — talking to the novel's characters, making dialogue choices, and collecting ten evidence cards that tie the story to its central theme: **Identity / Self-Expression**. A full playthrough takes about 5–10 minutes.
+A short, first-person 3D exploration game based on James Baldwin's novel *Giovanni's Room* (1956). You play as David and walk through five scenes of his memory — the house in the south of France, his father's living room, Guillaume's bar, Giovanni's room, and Hella's return — talking to the novel's characters, making dialogue choices, and collecting six evidence cards that tie the story to its central theme: **Identity / Self-Expression**. A full playthrough takes about 5–10 minutes.
 
 ## How to run
 
@@ -24,4 +24,4 @@ Then open the printed local address (e.g. http://localhost:3000 or http://localh
 
 ## Note for the teacher
 
-The ten collectible evidence cards are faithful **paraphrases** with accurate Part/Chapter attribution to the novel (Part One, Chapters 1–3; Part Two, Chapters 1–5). The citation field uses `Baldwin, p. ___` so the exact page can be filled from the physical class copy before submission. An in-game **For the Teacher** screen summarizes how the game covers the characters, plot, central conflict, theme, citations, and interactivity.
+The six collectible evidence cards are **direct quotations** from the novel, each labelled with its Part and Chapter (Part One, Chapters 1–3; Part Two, Chapters 1 and 4). Because page numbers shift between editions, Part and Chapter are given as the reliable reference; the in-text page citations stay within the length of the class copy. An in-game **For the Teacher** screen summarizes how the game covers the characters, plot, central conflict, theme, citations, and interactivity.

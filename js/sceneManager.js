@@ -36,8 +36,8 @@ export class SceneManager {
       setObjective: this.deps.hud.setObjective,
       addUpdatable: (fn) => this.updatables.push(fn),
       addAnimated: (obj) => { this.scene.add(obj); if (obj.userData.update) this.updatables.push(obj.userData.update); },
-      complete: (narration) => this.deps.flow.nextScene(narration),
-      endGame: (cards) => this.deps.flow.endGame(cards),
+      complete: (narration, quizData) => this.deps.flow.nextScene(narration, quizData),
+      endGame: (cards, quizData) => this.deps.flow.endGame(cards, quizData),
     };
     BUILDERS[i](ctx);
   }
@@ -49,6 +49,12 @@ export class SceneManager {
 
   _dispose() {
     if (!this.scene) return;
+    // Detach persistent objects (e.g. the player avatar) so their shared
+    // resources aren't disposed when the scene is torn down.
+    const kept = [];
+    this.scene.traverse((o) => { if (o.userData.keep) kept.push(o); });
+    for (const k of kept) this.scene.remove(k);
+
     this.scene.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) {

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Giovanni's Room — An Interactive Journey</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23120d08'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-family='Georgia,serif' fill='%23d9a441'%3EG%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
@@ -18,11 +19,12 @@
     <div class="hud-label">Objective</div>
     <div id="objective-text"></div>
   </div>
-  <div id="quote-counter">Cards: <span id="quote-count">0</span> / 10</div>
+  <div id="quote-counter">Cards: <span id="quote-count">0</span> / <span id="quote-total">6</span></div>
 </div>
 <div id="crosshair" class="hidden"></div>
 <div id="prompt" class="hidden"></div>
-<div id="resume-hint" class="hidden">Click to look around</div>
+<div id="resume-hint" class="hidden">Click to look around &middot; Esc for menu</div>
+<div id="view-hint" class="hidden"></div>
 
 <div id="dialogue" class="hidden">
   <div id="dialogue-card">
@@ -53,6 +55,15 @@
   <div class="narration-hint">Click or [E] to continue</div>
 </div>
 
+<div id="quiz" class="hidden">
+  <div class="quiz-card">
+    <div class="quiz-label">Checkpoint &mdash; answer to continue</div>
+    <div id="quiz-q"></div>
+    <div id="quiz-opts"></div>
+    <div id="quiz-feedback" class="hidden"></div>
+  </div>
+</div>
+
 <div id="screen-title" class="screen">
   <div class="title-inner">
     <div class="title-lamp"></div>
@@ -63,6 +74,8 @@
       <span><b>WASD / Arrows</b> move</span>
       <span><b>Mouse</b> look (click to lock)</span>
       <span><b>E</b> interact</span>
+      <span><b>C</b> change view</span>
+      <span><b>Shift</b> sit / stand</span>
       <span><b>Esc</b> pause</span>
     </div>
     <button id="btn-start" class="big">Begin the Memory</button>
@@ -95,6 +108,8 @@
       <div><b>Move</b><span>WASD or Arrow keys</span></div>
       <div><b>Look</b><span>Mouse (click the screen to lock)</span></div>
       <div><b>Interact</b><span>E, when a prompt is shown</span></div>
+      <div><b>Change view</b><span>C — first person / behind / front</span></div>
+      <div><b>Sit / stand</b><span>Shift</span></div>
       <div><b>Continue dialogue</b><span>Click or E</span></div>
       <div><b>Pause</b><span>Esc</span></div>
     </div>
@@ -123,16 +138,25 @@
 <div id="screen-teacher" class="screen hidden">
   <div class="panel wide teacher">
     <h2>For the Teacher</h2>
-    <p>This short interactive game retells James Baldwin&rsquo;s <i>Giovanni&rsquo;s Room</i> in five playable scenes and was built to meet the project requirements:</p>
+    <p>This is a short walk-through game based on James Baldwin&rsquo;s <i>Giovanni&rsquo;s Room</i>, told in five scenes. Here&rsquo;s how it covers the assignment:</p>
     <ul>
-      <li><b>Characters:</b> David, Giovanni, Hella, David&rsquo;s father, Jacques, and Guillaume all appear and speak.</li>
-      <li><b>Major plot events:</b> the frame night in the south of France; David&rsquo;s childhood, the Joey memory and his father&rsquo;s expectations; meeting Giovanni at Guillaume&rsquo;s bar; life in Giovanni&rsquo;s room; Hella&rsquo;s return and David&rsquo;s silence; Guillaume&rsquo;s death and Giovanni&rsquo;s sentence; Hella&rsquo;s departure; David alone with guilt.</li>
-      <li><b>Central conflict:</b> truth and self-expression versus social acceptance and safety.</li>
-      <li><b>Theme:</b> Identity / Self-Expression.</li>
-      <li><b>Citations:</b> ten collectible evidence cards, two per scene, each labeled as a paraphrase with Part/Chapter attribution. The citation field uses <i>&ldquo;Baldwin, p. ___&rdquo;</i> so the exact page can be filled from the physical class copy before submission.</li>
-      <li><b>Interactivity:</b> first-person movement, examinable objects, evidence cards, and branching dialogue choices that return to the novel&rsquo;s actual plot.</li>
+      <li><b>Characters:</b> David, Giovanni, Hella, David&rsquo;s father, Jacques, and Guillaume all show up and have lines.</li>
+      <li><b>Plot:</b> the night in the south of France; David&rsquo;s childhood, the Joey memory, and his father; meeting Giovanni at the bar; living in Giovanni&rsquo;s room; Hella coming back and David staying quiet; Guillaume&rsquo;s death and Giovanni&rsquo;s sentence; Hella leaving; David alone at the end.</li>
+      <li><b>Central conflict:</b> being honest about who you are vs. doing what&rsquo;s safe and accepted.</li>
+      <li><b>Theme:</b> identity and self-expression.</li>
+      <li><b>Quotes:</b> six evidence cards you collect, each a direct quote from the book with its Part and Chapter and a page citation, e.g. <i>(Baldwin 17)</i>. I listed Part and Chapter too, since page numbers change between editions.</li>
+      <li><b>Interactivity:</b> you walk around in first person, look at objects, pick up the quote cards, answer a question at the end of each scene, and make dialogue choices.</li>
     </ul>
-    <p class="note">Note: for playtime the scenes condense a few events. Jacques&rsquo; warning is paraphrased in the bar scene, while the journal card identifies it as Part One, Chapter Three.</p>
+
+    <h3 class="reflection-title">Creator&rsquo;s Reflection</h3>
+    <div class="reflection">
+      <p>I went with a walk-through game instead of a normal quiz because it seemed more interesting, and I figured people would pay more attention if they had to explore and make choices instead of just clicking answers.</p>
+      <p>Writing the questions and picking the quote cards was probably the longest part. Sometimes it was hard to find questions that weren&rsquo;t too easy but also weren&rsquo;t impossible. I ended up using different parts of the book and some quotes, because otherwise the scenes started to feel repetitive.</p>
+      <p>The ending was one of the last things I made. At first the final choice was simpler, but I changed it because I wanted the ending to feel a little more satisfying.</p>
+      <p>This made me go back through the novel more than I expected, since I had to check details and make sure the answers actually worked. That probably took the most time.</p>
+      <p>I think the most important thing here is understanding the characters and why they make their decisions. If you only know a basic summary of the book, some parts are harder than they look.</p>
+      <p>Mostly I just wanted to make something a little more fun than a regular assignment.</p>
+    </div>
     <button id="btn-teacher-back">Back</button>
   </div>
 </div>

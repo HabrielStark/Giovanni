@@ -18,11 +18,11 @@ export default function build(ctx) {
   });
 
   // lighting: cool moonlight through the window + one dim warm lamp
-  scene.add(new THREE.AmbientLight(0x5a6e94, 6));
-  const fill = new THREE.PointLight(0x8aa3cc, 14, 18, 1.6);
+  scene.add(new THREE.AmbientLight(0x5a6e94, 4));
+  const fill = new THREE.PointLight(0x8aa3cc, 8, 18, 1.6);
   fill.position.set(0, 2.7, 0.8);
   scene.add(fill);
-  const moon = new THREE.SpotLight(0xa9c4ee, 180, 26, 0.8, 0.6, 1.4);
+  const moon = new THREE.SpotLight(0xa9c4ee, 70, 26, 0.8, 0.6, 1.4);
   moon.position.set(0.4, 2.9, -3.15);
   moon.target.position.set(0, 0.4, 2.5);
   moon.castShadow = true;
@@ -123,12 +123,18 @@ export default function build(ctx) {
   // ---- objectives / tasks ----
   ctx.setObjective('Explore the house and begin David’s memory.');
   const tasks = taskTracker(
-    ['mirror', 'suitcase', 'notice', 'window', 'q1', 'q2'],
+    ['mirror', 'suitcase', 'notice', 'window', 'q1'],
     (k, remaining) => {
       const left = [...remaining];
       if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing evidence cards.');
     },
-    () => ctx.complete('To understand this night, I must go back to the beginning — to my father’s house, years ago, in America.')
+    () => ctx.complete('To understand this night, I must go back to the beginning — to my father’s house, years ago, in America.', {
+      q: 'The whole story is told while David waits through one night. What is set to happen at dawn in Paris?',
+      options: ['Giovanni will be executed', 'David will sail home to America', 'Hella will arrive by train'],
+      correct: 0,
+      why: 'Right. The memory is framed by Giovanni’s execution at dawn — the cost of David’s choices hangs over everything.',
+      hint: 'Look again at the execution notice you read on the table.',
+    })
   );
 
   const monologue = (lines, key) => () =>
@@ -164,7 +170,6 @@ export default function build(ctx) {
   });
 
   quotes.spawn(ctx, 'q1', new THREE.Vector3(1.5, 1.35, -2.5), () => tasks.done('q1'));
-  quotes.spawn(ctx, 'q2', new THREE.Vector3(-3.6, 1.35, 1.6), () => tasks.done('q2'));
 
   // intro line
   dialogue.start([

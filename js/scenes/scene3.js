@@ -19,20 +19,20 @@ export default function build(ctx) {
     ceilMat: mat(0x2a190f),
   });
 
-  scene.add(new THREE.AmbientLight(0x7a4f28, 0.85));
+  scene.add(new THREE.AmbientLight(0x7a4f28, 1.3));
 
   for (const [x, z, shadow] of [[-3.6, 0.4, false], [0, -0.6, true], [3.6, 0.4, false]]) {
     const cord = cyl(0.012, 0.012, 0.9, mat(0x1a120a), x, H - 0.45, z);
     const shade = cyl(0.16, 0.3, 0.22, mat(0x6e4424, { roughness: 0.5 }), x, H - 0.95, z);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
     bulb.position.set(x, H - 1.05, z);
-    const light = new THREE.PointLight(0xffb966, 16, 12, 1.8);
+    const light = new THREE.PointLight(0xffb966, 10, 12, 1.8);
     light.position.set(x, H - 1.12, z);
     if (shadow) { light.castShadow = true; light.shadow.mapSize.set(1024, 1024); }
     scene.add(cord, shade, bulb, light);
   }
 
-  const redWash = new THREE.PointLight(0xff3a26, 10, 9, 1.8);
+  const redWash = new THREE.PointLight(0xff3a26, 5, 9, 1.8);
   redWash.position.set(6.3, 2.1, 1.5);
   scene.add(redWash);
 
@@ -114,13 +114,19 @@ export default function build(ctx) {
 
   ctx.setObjective('Meet Jacques, hear out Guillaume — then talk to Giovanni at the bar.');
   const tasks = taskTracker(
-    ['jacques', 'guillaume', 'giovanni', 'q5', 'q6'],
+    ['jacques', 'guillaume', 'giovanni', 'q4'],
     (k, remaining) => {
       const left = [...remaining];
       if (left.every((x) => x.startsWith('q'))) ctx.setObjective('Collect the remaining glowing evidence cards.');
       else if (!left.includes('jacques') && !left.includes('guillaume') && left.includes('giovanni')) ctx.setObjective('Talk to Giovanni at the bar.');
     },
-    () => ctx.complete('We talked until the bar emptied and the sky went grey over Les Halles. And when Giovanni asked if I was coming with him — I went.')
+    () => ctx.complete('We talked until the bar emptied and the sky went grey over Les Halles. And when Giovanni asked if I was coming with him — I went.', {
+      q: 'What does Jacques warn David about love?',
+      options: ['That love is always doomed and best avoided', 'That treating love as shameful turns it into a prison', 'That he should marry Hella as soon as possible'],
+      correct: 1,
+      why: 'Yes. Jacques names the novel’s central choice: love denied out of shame imprisons; love expressed without shame can free.',
+      hint: 'Recall Jacques’ words at the bar about shame and being left alone.',
+    })
   );
 
   const J = { speaker: 'Jacques', color: PALETTES.jacques.accent };
@@ -201,6 +207,5 @@ export default function build(ctx) {
     },
   });
 
-  quotes.spawn(ctx, 'q5', new THREE.Vector3(-5.2, 1.4, 2.9), () => tasks.done('q5'));
-  quotes.spawn(ctx, 'q6', new THREE.Vector3(3.1, 1.45, -1.1), () => tasks.done('q6'));
+  quotes.spawn(ctx, 'q4', new THREE.Vector3(-5.2, 1.4, 2.9), () => tasks.done('q4'));
 }
