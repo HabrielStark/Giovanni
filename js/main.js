@@ -420,6 +420,7 @@ function animate() {
     }
   }
   const blocked = uiBlocked();
+  document.body.classList.toggle('game-active', game.state === 'playing' && !blocked);
   player.enabled = !blocked;
 
   if (game.state === 'playing' && !game.paused) {
@@ -443,7 +444,7 @@ function animate() {
     const vh = $('view-hint'); if (vh) vh.classList.add('hidden');
   }
 
-  $('resume-hint').classList.toggle('hidden', !(game.state === 'playing' && !blocked && !controls.isLocked));
+  $('resume-hint').classList.toggle('hidden', true);
   $('crosshair').classList.toggle('hidden',
     !(game.state === 'playing' && viewMode === VIEW.FP && !blocked));
 

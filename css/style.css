@@ -13,6 +13,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #06080d; }
 body { font-family: var(--sans); color: #e8e4da; }
 
 canvas#game-canvas { position: fixed; inset: 0; display: block; }
+body.game-active,
+body.game-active canvas#game-canvas {
+  cursor: none;
+}
 
 .hidden { display: none !important; }
 
