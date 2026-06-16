@@ -131,6 +131,10 @@ function uiBlocked() {
     dialogue.open || quotes.overlayOpen || narration.open || quiz.open;
 }
 
+function lockIfPlaying() {
+  if (game.state === 'playing' && !uiBlocked() && !controls.isLocked) player.tryLock();
+}
+
 // ---------- systems ----------
 const player = new Player(camera, renderer.domElement);
 const controls = player.controls;
@@ -142,7 +146,7 @@ const dialogue = new DialogueSystem({
   choices: $('dialogue-choices'), cont: $('dialogue-continue'),
 }, {
   onOpen: () => controls.unlock(),
-  onClose: () => {},
+  onClose: () => lockIfPlaying(),
 });
 
 const quotes = new QuoteSystem({
@@ -151,7 +155,7 @@ const quotes = new QuoteSystem({
   meaning: $('qc-meaning'), close: $('qc-close'), count: $('quote-count'),
 }, {
   onOpen: () => controls.unlock(),
-  onClose: () => {},
+  onClose: () => lockIfPlaying(),
 });
 
 const hud = { setObjective: (text) => { $('objective-text').textContent = text; } };
@@ -189,6 +193,7 @@ function narrationAdvance() {
     const r = narration.resolve;
     narration.resolve = null;
     if (r) r();
+    lockIfPlaying();
   } else {
     renderNarration();
   }
@@ -235,6 +240,7 @@ function answerQuiz(i, btn, data) {
       $('quiz').classList.add('hidden');
       const r = quiz.resolve; quiz.resolve = null;
       if (r) r();
+      lockIfPlaying();
     }, 1200);
   } else {
     btn.classList.add('wrong');
@@ -268,6 +274,7 @@ const flow = {
     warmNextScene();
     game.transitioning = false;
     await fadeTo(0);
+    lockIfPlaying();
   },
   async endGame(cards, quizData) {
     game.transitioning = true;
@@ -324,6 +331,7 @@ function openPause() {
 function resume() {
   game.paused = false;
   hideScreens();
+  lockIfPlaying();
 }
 
 $('btn-start').addEventListener('click', async () => {
@@ -334,6 +342,7 @@ $('btn-start').addEventListener('click', async () => {
   sceneManager.load(0);
   markVisualRefresh();
   warmNextScene();
+  lockIfPlaying();
   await fadeTo(0);
 });
 $('btn-title-teacher').addEventListener('click', () => { teacherReturn = 'screen-title'; showScreen('screen-teacher'); });
