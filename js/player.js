@@ -22,6 +22,7 @@ export class Player {
     this.speed = 0;
     this.dragging = false;
     this.pointerId = null;
+    this.lastPointer = null;
 
     addEventListener('keydown', (e) => { this.keys[e.code] = true; });
     addEventListener('keyup', (e) => { this.keys[e.code] = false; });
@@ -44,9 +45,18 @@ export class Player {
       this.pointerId = null;
     });
     domElement.addEventListener('pointermove', (e) => {
-      if (!this.enabled || this.controls.isLocked || !this.dragging) return;
-      this.camera.rotation.y -= e.movementX * 0.0022;
-      this.camera.rotation.x -= e.movementY * 0.0022;
+      if (!this.enabled || this.controls.isLocked) return;
+      if (e.pointerType !== 'mouse' && !this.dragging) return;
+      let dx = e.movementX;
+      let dy = e.movementY;
+      if ((dx === 0 && dy === 0) && this.lastPointer) {
+        dx = e.clientX - this.lastPointer.x;
+        dy = e.clientY - this.lastPointer.y;
+      }
+      this.lastPointer = { x: e.clientX, y: e.clientY };
+      if (dx === 0 && dy === 0) return;
+      this.camera.rotation.y -= dx * 0.0022;
+      this.camera.rotation.x -= dy * 0.0022;
       this.camera.rotation.x = THREE.MathUtils.clamp(this.camera.rotation.x, -Math.PI / 2 + 0.02, Math.PI / 2 - 0.02);
     });
   }
