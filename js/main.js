@@ -11,9 +11,10 @@ const $ = (id) => document.getElementById(id);
 
 // ---------- renderer / camera ----------
 const LOW_POWER =
+  (navigator.deviceMemory && navigator.deviceMemory <= 4) ||
   navigator.hardwareConcurrency <= 4 ||
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const DPR_LIMIT = LOW_POWER ? 1 : 1.5;
+const DPR_LIMIT = LOW_POWER ? 0.85 : 1.15;
 let targetPixelRatio = Math.min(devicePixelRatio || 1, DPR_LIMIT);
 let perfFrames = 0;
 let perfTime = 0;
@@ -31,10 +32,6 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
 renderer.domElement.id = 'game-canvas';
 document.body.prepend(renderer.domElement);
-
-// Start downloading every character model immediately, while the player is
-// still on the title screen, so scenes pop in without a wait.
-preloadCharacters();
 
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 220);
 
@@ -55,7 +52,7 @@ addEventListener('resize', () => {
 const VIEW = { FP: 0, TP_BACK: 1, TP_FRONT: 2 };
 const VIEW_NAMES = ['First person', 'Third person — behind', 'Third person — front'];
 let viewMode = VIEW.FP;
-const avatar = createAvatar();
+let avatar = null;
 const AVATAR_FACING = Math.PI; // David.fbx faces -Z by default; flip to face look dir
 const _dir = new THREE.Vector3();
 const _look = new THREE.Vector3();
@@ -63,8 +60,14 @@ const _flat = new THREE.Vector3(0, 0, -1); // last stable horizontal facing
 
 function cycleView() {
   viewMode = (viewMode + 1) % 3;
+  if (viewMode !== VIEW.FP) ensureAvatar();
   renderer.shadowMap.needsUpdate = true;
   showViewHint(VIEW_NAMES[viewMode]);
+}
+
+function ensureAvatar() {
+  if (!avatar) avatar = createAvatar();
+  return avatar;
 }
 
 let viewHintTimer = 0;
@@ -77,6 +80,7 @@ function showViewHint(text) {
 }
 
 function updateAvatarAndCamera() {
+  if (!avatar) return;
   // keep the avatar parented to the live scene
   if (sceneManager.scene && avatar.object.parent !== sceneManager.scene) {
     sceneManager.scene.add(avatar.object);
@@ -258,6 +262,7 @@ const flow = {
     if (narrationLine) await showNarration([narrationLine]);
     sceneManager.load(sceneManager.index + 1);
     markVisualRefresh();
+    warmNextScene();
     game.transitioning = false;
     if (!uiBlocked()) player.tryLock();
     await fadeTo(0);
@@ -291,6 +296,19 @@ function markVisualRefresh() {
   renderer.shadowMap.needsUpdate = true;
 }
 
+function warmNextScene() {
+  const nextSceneModels = [
+    ['father'],
+    ['jacques', 'guillaume', 'giovanni'],
+    ['giovanni'],
+    ['hella'],
+    [],
+  ];
+  const keys = nextSceneModels[sceneManager.index] || [];
+  if (!keys.length) return;
+  setTimeout(() => preloadCharacters(keys), 8000);
+}
+
 let journalReturn = 'screen-pause';
 let teacherReturn = 'screen-title';
 
@@ -314,6 +332,7 @@ $('btn-start').addEventListener('click', async () => {
   $('crosshair').classList.remove('hidden');
   sceneManager.load(0);
   markVisualRefresh();
+  warmNextScene();
   if (!uiBlocked()) player.tryLock();
   await fadeTo(0);
 });
@@ -387,7 +406,7 @@ function animate() {
     const fps = perfFrames / perfTime;
     perfFrames = 0;
     perfTime = 0;
-    const minRatio = LOW_POWER ? 0.75 : 0.9;
+    const minRatio = LOW_POWER ? 0.6 : 0.8;
     if (fps < 42 && targetPixelRatio > minRatio) {
       targetPixelRatio = Math.max(minRatio, targetPixelRatio - 0.15);
       renderer.setPixelRatio(targetPixelRatio);
@@ -408,11 +427,11 @@ function animate() {
   }
 
   // player avatar + camera rig
-  avatar.update(dt);
+  if (avatar) avatar.update(dt);
   if (game.state === 'playing') {
-    avatar.setMoving(player.speed > 0.4 && controls.isLocked && !blocked);
+    if (avatar) avatar.setMoving(player.speed > 0.4 && controls.isLocked && !blocked);
     updateAvatarAndCamera();
-  } else {
+  } else if (avatar) {
     avatar.object.visible = false;
   }
 

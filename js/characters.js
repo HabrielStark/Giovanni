@@ -19,11 +19,11 @@ export const PALETTES = {
 // Source files the user provided in /3models, with a target standing height
 // (metres) so every figure ends up consistent regardless of source units.
 const MODELS = {
-  giovanni:  { url: '3models/Giovanni.gltf', kind: 'gltf', height: 1.78 },
-  hella:     { url: '3models/Hella.gltf',    kind: 'gltf', height: 1.68 },
+  giovanni:  { url: '3models/optimized/Giovanni.glb', kind: 'gltf', height: 1.78 },
+  hella:     { url: '3models/optimized/Hella.glb',    kind: 'gltf', height: 1.68 },
   father:    { url: '3models/Father.fbx',    kind: 'fbx',  height: 1.80 },
   jacques:   { url: '3models/Jacques.fbx',   kind: 'fbx',  height: 1.74 },
-  guillaume: { url: '3models/Guillaume.glb', kind: 'gltf', height: 1.77 },
+  guillaume: { url: '3models/optimized/Guillaume.glb', kind: 'gltf', height: 1.77 },
   david:     { url: '3models/David.fbx',     kind: 'fbx',  height: 1.80 },
 };
 
@@ -32,11 +32,38 @@ const _gltf = new GLTFLoader();
 const _fbx = new FBXLoader();
 const _cache = new Map(); // url -> Promise<{ root, animations }>
 const LOW_POWER =
+  (navigator.deviceMemory && navigator.deviceMemory <= 4) ||
   navigator.hardwareConcurrency <= 4 ||
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const _queue = [];
+let _loading = false;
 
-function loadSource(cfg) {
+function loadSource(cfg, priority = false) {
   if (_cache.has(cfg.url)) return _cache.get(cfg.url);
+  const p = new Promise((resolve, reject) => {
+    const job = { cfg, resolve, reject };
+    if (priority) _queue.unshift(job);
+    else _queue.push(job);
+    pumpQueue();
+  });
+  _cache.set(cfg.url, p);
+  return p;
+}
+
+function pumpQueue() {
+  if (_loading) return;
+  const job = _queue.shift();
+  if (!job) return;
+  _loading = true;
+  loadNow(job.cfg)
+    .then(job.resolve, job.reject)
+    .finally(() => {
+      _loading = false;
+      scheduleIdle(pumpQueue);
+    });
+}
+
+function loadNow(cfg) {
   const p = new Promise((resolve, reject) => {
     if (cfg.kind === 'fbx') {
       _fbx.load(cfg.url, (obj) => resolve({ root: obj, animations: obj.animations || [] }), undefined, reject);
@@ -44,7 +71,6 @@ function loadSource(cfg) {
       _gltf.load(cfg.url, (g) => resolve({ root: g.scene, animations: g.animations || [] }), undefined, reject);
     }
   });
-  _cache.set(cfg.url, p);
   return p;
 }
 
@@ -56,13 +82,12 @@ function scheduleIdle(fn) {
 // Warm the cache without parsing every rig at the same instant. Starting all
 // six FBX/glTF loads together made the title screen and first interaction hitch
 // badly on slower machines.
-export function preloadCharacters() {
-  const queue = ['david', 'giovanni', 'hella', 'father', 'jacques', 'guillaume']
-    .map((key) => MODELS[key]);
+export function preloadCharacters(keys = []) {
+  const queue = keys.map((key) => MODELS[key]).filter(Boolean);
   const pump = () => {
     const cfg = queue.shift();
     if (!cfg) return;
-    loadSource(cfg)
+    loadSource(cfg, false)
       .catch((err) => console.warn('Preload failed:', cfg.url, err))
       .finally(() => scheduleIdle(pump));
   };
@@ -214,7 +239,7 @@ export function createCharacter(name, paletteKey) {
   const animStep = LOW_POWER ? 1 / 24 : 1 / 40;
 
   if (cfg) {
-    loadSource(cfg).then((src) => {
+    loadSource(cfg, true).then((src) => {
       model = cloneSkinned(src.root);
       normalize(model, cfg.height);
       humanizeMaterials(model);
@@ -275,7 +300,7 @@ export function createAvatar() {
 
   let mixer = null, idleA = null, moveA = null, model = null, moving = false;
   let holder = null, hasClips = false, t = 0, bob = 0;
-  loadSource(cfg).then((src) => {
+  loadSource(cfg, true).then((src) => {
     model = cloneSkinned(src.root);
     normalize(model, cfg.height);
     humanizeMaterials(model);
