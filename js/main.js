@@ -393,7 +393,7 @@ controls.addEventListener('unlock', () => { /* intentionally no auto-pause */ })
 // click empty space to re-engage pointer lock
 renderer.domElement.addEventListener('click', () => {
   if (game.state !== 'playing' || uiBlocked()) return;
-  if (interactions.current && !controls.isLocked) interactions.interact();
+  if (interactions.current) interactions.interact();
   else if (!controls.isLocked) player.tryLock();
 });
 

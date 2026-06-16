@@ -10,6 +10,7 @@ const SIT_EYE = 0.95;
 export class Player {
   constructor(camera, domElement) {
     this.camera = camera;
+    this.domElement = domElement;
     this.controls = new PointerLockControls(camera, domElement);
     this.enabled = true;
     this.keys = {};
@@ -23,6 +24,11 @@ export class Player {
     this.dragging = false;
     this.pointerId = null;
     this.lastPointer = null;
+    this.lastLockAttempt = 0;
+
+    document.addEventListener('pointerlockerror', (e) => {
+      e.stopImmediatePropagation();
+    }, true);
 
     addEventListener('keydown', (e) => { this.keys[e.code] = true; });
     addEventListener('keyup', (e) => { this.keys[e.code] = false; });
@@ -30,15 +36,17 @@ export class Player {
 
     domElement.addEventListener('pointerdown', (e) => {
       if (!this.enabled || this.controls.isLocked) return;
+      if (e.pointerType === 'mouse') this.tryLock();
       this.dragging = true;
       this.pointerId = e.pointerId;
-      domElement.setPointerCapture?.(e.pointerId);
+      this.lastPointer = { x: e.clientX, y: e.clientY };
+      try { domElement.setPointerCapture?.(e.pointerId); } catch (err) { /* pointer lock/fallback can make capture invalid */ }
     });
     domElement.addEventListener('pointerup', (e) => {
       if (this.pointerId !== e.pointerId) return;
       this.dragging = false;
       this.pointerId = null;
-      domElement.releasePointerCapture?.(e.pointerId);
+      try { domElement.releasePointerCapture?.(e.pointerId); } catch (err) { /* already released */ }
     });
     domElement.addEventListener('pointercancel', () => {
       this.dragging = false;
@@ -79,7 +87,15 @@ export class Player {
   }
 
   tryLock() {
-    try { this.controls.lock(); } catch (e) { /* shown via resume hint */ }
+    const now = performance.now();
+    if (now - this.lastLockAttempt < 700) return;
+    this.lastLockAttempt = now;
+    try {
+      const result = this.domElement.requestPointerLock?.();
+      if (result && result.catch) result.catch(() => {});
+    } catch (e) {
+      // Fallback mouse-look remains active when Pointer Lock is unavailable.
+    }
   }
 
   update(dt) {
